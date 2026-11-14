@@ -39,7 +39,13 @@ async function request(path, method = 'GET', body) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new ApiError("You're offline. This change wasn't saved — try again when you're connected.", { offline: true });
+    // fetch only rejects when no response arrived: either the device is offline or the server is unreachable.
+    throw new ApiError(
+      navigator.onLine
+        ? "Couldn't reach the LaterLess server. Nothing was saved — please try again in a moment."
+        : "You're offline. Nothing was saved — try again when you're connected.",
+      { offline: true }
+    );
   }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
