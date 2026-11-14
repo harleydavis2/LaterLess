@@ -40,6 +40,16 @@ Open http://localhost:5173. Vite proxies `/api` to the backend. The service work
 
 **Config** (optional `backend/.env`, see `.env.example`): `PORT` (default 3001) and `DB_PATH` (default `backend/data/laterless.db`). The frontend's dev proxy target can be changed with `API_URL`.
 
+## Deploy on Railway
+
+Railway uses the root `npm run build` and `npm start` scripts, so no extra config is needed. SQLite needs a disk that survives redeploys:
+
+1. In the service, add a **Volume** mounted at `/data`.
+2. Add the variable `DB_PATH=/data/laterless.db`.
+3. Under Settings → Networking, click **Generate Domain**.
+
+Without the volume, all data is wiped on every deploy. There is one shared profile and no login, so anyone with the URL sees the same data.
+
 ## Folder structure
 
 ```
