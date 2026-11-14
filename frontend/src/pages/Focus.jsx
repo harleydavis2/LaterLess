@@ -7,7 +7,7 @@ import { formatDuration } from '../lib/stats.js';
 
 // The running timer lives in localStorage as timestamps, so a refresh (or closing the tab)
 // never loses time: elapsed = elapsedMs (before the last pause) + time since runningSince.
-const KEY = 'laterless.timer';
+export const KEY = 'laterless.timer';
 const loadTimer = () => {
   try {
     return JSON.parse(localStorage.getItem(KEY));

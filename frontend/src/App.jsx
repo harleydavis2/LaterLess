@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { WifiOff } from 'lucide-react';
-import { api, loadAll } from './api.js';
+import { api, clearCache, loadAll } from './api.js';
 import { focusByTask } from './lib/stats.js';
 import BottomNav from './components/BottomNav.jsx';
 import Modal from './components/Modal.jsx';
@@ -10,9 +10,9 @@ import DelayForm from './components/DelayForm.jsx';
 import { ErrorState, Loading, OfflinePage } from './components/States.jsx';
 import Home from './pages/Home.jsx';
 import Tasks from './pages/Tasks.jsx';
-import Focus from './pages/Focus.jsx';
+import Focus, { KEY as TIMER_KEY } from './pages/Focus.jsx';
 import Insights from './pages/Insights.jsx';
-import Welcome from './pages/Welcome.jsx';
+import Auth from './pages/Auth.jsx';
 
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
@@ -66,11 +66,24 @@ export default function App() {
         await reload();
         return true;
       } catch (err) {
-        setToast(err.message);
+        setToast(err.status === 401 ? 'Your session ended. Please sign in again.' : err.message);
+        if (err.status === 401) reload();
         return false;
       }
     },
     [reload]
+  );
+
+  // Also wipes this device's cached data and any running timer, so the next person starts clean.
+  const signOut = useCallback(
+    () =>
+      act(async () => {
+        await api.logout();
+        await clearCache();
+        localStorage.removeItem(TIMER_KEY);
+        location.hash = '';
+      }),
+    [act]
   );
 
   const ctx = useMemo(
@@ -80,17 +93,18 @@ export default function App() {
         focus: focusByTask(data.sessions),
         reload,
         act,
+        signOut,
         setToast,
         openTaskForm: setTaskForm,
         openDelay: setDelayTask,
         askConfirm: setConfirm,
       },
-    [data, reload, act]
+    [data, reload, act, signOut]
   );
 
   if (!data && !error) return <Loading />;
   if (!data) return error.offline ? <OfflinePage onRetry={reload} /> : <ErrorState message={error.message} onRetry={reload} />;
-  if (!data.user) return <Welcome onSaved={reload} />;
+  if (!data.user) return <Auth onDone={reload} />;
 
   const Page = PAGES[page];
 

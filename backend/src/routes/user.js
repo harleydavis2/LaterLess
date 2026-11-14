@@ -1,19 +1,17 @@
 import { Router } from 'express';
-import { getUser } from '../db.js';
+import { currentUser, requireAuth } from '../auth.js';
 
 export default function userRoutes(db) {
   const r = Router();
 
-  r.get('/', (req, res) => res.json(getUser(db) ?? null));
+  // null when signed out, so the app knows to show the sign-in page.
+  r.get('/', (req, res) => res.json(currentUser(db, req)));
 
-  // Creates the profile on first use, renames it afterwards.
-  r.put('/', (req, res) => {
+  r.put('/', requireAuth(db), (req, res) => {
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     if (!name || name.length > 50) return res.status(400).json({ error: 'Name must be 1–50 characters' });
-    const user = getUser(db);
-    if (user) db.prepare('UPDATE Users SET name = ? WHERE id = ?').run(name, user.id);
-    else db.prepare('INSERT INTO Users (name) VALUES (?)').run(name);
-    res.json(getUser(db));
+    db.prepare('UPDATE Users SET name = ? WHERE id = ?').run(name, req.user.id);
+    res.json(currentUser(db, req));
   });
 
   return r;

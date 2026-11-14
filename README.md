@@ -48,7 +48,7 @@ Railway uses the root `npm run build` and `npm start` scripts, so no extra confi
 2. Add the variable `DB_PATH=/data/laterless.db`.
 3. Under Settings → Networking, click **Generate Domain**.
 
-Without the volume, all data is wiped on every deploy. There is one shared profile and no login, so anyone with the URL sees the same data.
+Without the volume, all data (including accounts) is wiped on every deploy.
 
 ## Folder structure
 
@@ -56,14 +56,15 @@ Without the volume, all data is wiped on every deploy. There is one shared profi
 backend/
   src/schema.sql        database tables, foreign keys, CHECK constraints
   src/db.js             opens SQLite and applies the schema
+  src/auth.js           password hashing, session cookies, requireAuth
   src/app.js            Express app: mounts routes, JSON errors, serves frontend/dist
-  src/routes/           user.js, tasks.js, sessions.js, logs.js
+  src/routes/           auth.js, user.js, tasks.js, sessions.js, logs.js
   test/api.test.js      end-to-end API test (in-memory DB)
 frontend/
   src/api.js            fetch wrapper + IndexedDB cache of the last loaded data
   src/App.jsx           data loading, tab routing (#/home …), shared modals, context
   src/lib/stats.js      all dashboard/insight statistics (pure functions, unit-tested)
-  src/pages/            Home, Tasks, Focus, Insights, Welcome
+  src/pages/            Auth (sign in / sign up), Home, Tasks, Focus, Insights
   src/components/       TaskCard, TaskForm, DelayForm, Modal, ConfirmDialog, Charts, States …
   vite.config.js        PWA manifest + service worker config
 ```
@@ -72,18 +73,33 @@ frontend/
 
 | Table | Columns |
 |---|---|
-| Users | id, name, created_at |
+| Users | id, name, email (unique, lowercase), password_hash, created_at |
+| AuthSessions | token_hash (SHA-256 of the cookie token), user_id → Users, expires_at |
 | Tasks | id, user_id → Users, title, description, due_date (YYYY-MM-DD), estimated_duration (minutes), status (pending / in_progress / completed / delayed), created_at, completed_at |
 | FocusSessions | id, task_id → Tasks, start_time, end_time, duration (seconds worked, pauses excluded) |
 | ProcrastinationLogs | id, task_id → Tasks, reason (one of 6 fixed reasons), note, created_at |
 
-Deleting a task deletes its sessions and logs (`ON DELETE CASCADE`). There is one local profile and no login, by design.
+Deleting a task deletes its sessions and logs (`ON DELETE CASCADE`).
+
+## Accounts
+
+- **Sign up** with name, email and a password of 8+ characters; **sign in** with email and password. Sign out is in the profile button on Home.
+- Passwords are hashed with scrypt (Node's built-in `crypto`) and a random salt. The plain password is never stored.
+- Signing in sets a random session token in an `HttpOnly`, `SameSite=Lax` cookie (marked `Secure` over HTTPS) that lasts 30 days. Only the token's SHA-256 is stored.
+- Every task, focus session and delay log belongs to one user, and the API only ever returns or changes the signed-in user's own data.
+- After 10 failed sign-ins from one IP address, sign-in is blocked for 15 minutes (kept in memory, so it resets when the server restarts).
+- Signing out also clears that device's offline cache and any running timer.
+- There is no password reset or email verification.
+- A database created before accounts existed keeps its old profile and tasks, but nobody can sign into that profile.
 
 ## API
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET / PUT | `/api/user` | read / create-or-rename the profile |
+| POST | `/api/auth/signup` | create an account `{ name, email, password }` and sign in |
+| POST | `/api/auth/login` | sign in `{ email, password }` |
+| POST | `/api/auth/logout` | sign out |
+| GET / PUT | `/api/user` | the signed-in user (`null` if signed out) / rename |
 | GET | `/api/tasks?status=` | list tasks (optional status filter) |
 | POST | `/api/tasks` | create a task |
 | PATCH | `/api/tasks/:id` | update any fields (sets `completed_at` automatically) |
@@ -91,7 +107,7 @@ Deleting a task deletes its sessions and logs (`ON DELETE CASCADE`). There is on
 | GET / POST | `/api/sessions` | list / save focus sessions |
 | GET / POST | `/api/logs` | procrastination history / log a delay (also marks the task Delayed) |
 
-All input is validated on the server; errors come back as `{ "error": "message" }` with status 400 or 404.
+Everything except `/api/auth/*` and `GET /api/user` returns 401 when signed out. All input is validated on the server; errors come back as `{ "error": "message" }` (400, 401, 404, 409 or 429).
 
 ## How the main features work
 

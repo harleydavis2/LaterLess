@@ -1,6 +1,8 @@
 import express from 'express';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { requireAuth } from './auth.js';
+import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import taskRoutes from './routes/tasks.js';
 import sessionRoutes from './routes/sessions.js';
@@ -10,12 +12,15 @@ const DIST = fileURLToPath(new URL('../../frontend/dist', import.meta.url));
 
 export function createApp(db) {
   const app = express();
+  // Behind one HTTPS proxy (Railway): trust it for req.ip and req.secure (secure cookies).
+  app.set('trust proxy', 1);
   app.use(express.json({ limit: '20kb' }));
 
+  app.use('/api/auth', authRoutes(db));
   app.use('/api/user', userRoutes(db));
-  app.use('/api/tasks', taskRoutes(db));
-  app.use('/api/sessions', sessionRoutes(db));
-  app.use('/api/logs', logRoutes(db));
+  app.use('/api/tasks', requireAuth(db), taskRoutes(db));
+  app.use('/api/sessions', requireAuth(db), sessionRoutes(db));
+  app.use('/api/logs', requireAuth(db), logRoutes(db));
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
   // After `npm run build` in frontend/, serve the PWA from the same origin.

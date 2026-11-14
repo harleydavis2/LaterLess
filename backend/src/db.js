@@ -19,8 +19,12 @@ export function openDb(file = process.env.DB_PATH || DEFAULT_PATH) {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
+  // Databases created before accounts existed have no login columns; add them.
+  // Their old profile has no email/password, so it can't be signed into.
+  if (!db.prepare('PRAGMA table_info(Users)').all().some((c) => c.name === 'email')) {
+    db.exec(`ALTER TABLE Users ADD COLUMN email TEXT;
+             ALTER TABLE Users ADD COLUMN password_hash TEXT;
+             CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON Users(email);`);
+  }
   return db;
 }
-
-// Single local profile: the app has exactly one user (no authentication by design).
-export const getUser = (db) => db.prepare('SELECT * FROM Users ORDER BY id LIMIT 1').get();

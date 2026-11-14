@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { STATUSES, getUser } from '../db.js';
+import { STATUSES } from '../db.js';
 
 const FIELDS = ['title', 'description', 'due_date', 'estimated_duration', 'status'];
 
@@ -21,13 +21,6 @@ const pick = (body = {}) => Object.fromEntries(FIELDS.filter((f) => f in body).m
 export default function taskRoutes(db) {
   const r = Router();
   const find = (id, userId) => db.prepare('SELECT * FROM Tasks WHERE id = ? AND user_id = ?').get(id, userId);
-
-  // Every task route needs the profile to exist.
-  r.use((req, res, next) => {
-    req.user = getUser(db);
-    if (!req.user) return res.status(400).json({ error: 'Create a profile first' });
-    next();
-  });
 
   r.get('/', (req, res) => {
     const { status } = req.query;

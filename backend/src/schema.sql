@@ -2,9 +2,18 @@
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS Users (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  name        TEXT NOT NULL,
-  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  name           TEXT NOT NULL,
+  email          TEXT NOT NULL UNIQUE,         -- stored lowercase
+  password_hash  TEXT NOT NULL,                -- scrypt "salt:hash" (hex), never the password
+  created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- Signed-in browsers. The cookie holds a random token; only its SHA-256 is stored here.
+CREATE TABLE IF NOT EXISTS AuthSessions (
+  token_hash  TEXT PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES Users(id) ON DELETE CASCADE,
+  expires_at  TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Tasks (

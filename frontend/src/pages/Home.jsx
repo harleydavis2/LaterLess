@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarCheck, Pencil, Plus } from 'lucide-react';
+import { CalendarCheck, CircleUserRound, LogOut, Plus } from 'lucide-react';
 import { useApp } from '../App.jsx';
 import Modal from '../components/Modal.jsx';
 import ProfileForm from '../components/ProfileForm.jsx';
@@ -7,6 +7,7 @@ import TaskCard from '../components/TaskCard.jsx';
 import { EmptyState } from '../components/States.jsx';
 import { WeeklyChart } from '../components/Charts.jsx';
 import { formatDuration, todaySummary, weekSummary, weeklyCompletions } from '../lib/stats.js';
+import { KEY as TIMER_KEY } from './Focus.jsx';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -23,8 +24,19 @@ function Stat({ label, value, tone = 'text-stone-900' }) {
 }
 
 export default function Home() {
-  const { user, tasks, sessions, logs, reload, openTaskForm } = useApp();
-  const [editingName, setEditingName] = useState(false);
+  const { user, tasks, sessions, logs, reload, openTaskForm, signOut, askConfirm } = useApp();
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const confirmSignOut = () => {
+    setProfileOpen(false);
+    if (!localStorage.getItem(TIMER_KEY)) return signOut();
+    askConfirm({
+      title: 'Sign out?',
+      message: 'Your focus timer is still running. Signing out discards that unsaved time.',
+      confirmLabel: 'Sign out',
+      onConfirm: signOut,
+    });
+  };
   const today = todaySummary(tasks);
   const week = weekSummary({ tasks, sessions, logs });
 
@@ -33,16 +45,23 @@ export default function Home() {
       <header className="mb-5 flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-stone-500">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-          <h1 className="mt-0.5 flex items-center gap-1.5 text-2xl font-semibold tracking-tight">
+          <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">
             {greeting()}, {user.name}
-            <button type="button" onClick={() => setEditingName(true)} aria-label="Edit your name" className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600">
-              <Pencil className="size-4" />
-            </button>
           </h1>
         </div>
-        <button type="button" className="btn btn-primary shrink-0 px-3" onClick={() => openTaskForm({})}>
-          <Plus className="size-4" aria-hidden /> Add task
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button type="button" className="btn btn-primary px-3" onClick={() => openTaskForm({})}>
+            <Plus className="size-4" aria-hidden /> Add task
+          </button>
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            aria-label="Profile and sign out"
+            className="grid size-10 place-items-center rounded-xl border border-stone-200 bg-white text-stone-600 hover:bg-stone-100"
+          >
+            <CircleUserRound className="size-5" />
+          </button>
+        </div>
       </header>
 
       <section aria-label="Today's progress" className="card mb-3 p-4">
@@ -104,16 +123,24 @@ export default function Home() {
         <WeeklyChart data={weeklyCompletions(tasks)} height={130} />
       </section>
 
-      <Modal open={editingName} onClose={() => setEditingName(false)} title="Your name">
-        {editingName && (
-          <ProfileForm
-            initialName={user.name}
-            submitLabel="Save"
-            onSaved={async () => {
-              await reload();
-              setEditingName(false);
-            }}
-          />
+      <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Your profile">
+        {profileOpen && (
+          <>
+            <p className="mb-4 text-sm text-stone-500">
+              Signed in as <span className="font-medium text-stone-800">{user.email}</span>
+            </p>
+            <ProfileForm
+              initialName={user.name}
+              submitLabel="Save name"
+              onSaved={async () => {
+                await reload();
+                setProfileOpen(false);
+              }}
+            />
+            <button type="button" className="btn btn-secondary mt-3 w-full" onClick={confirmSignOut}>
+              <LogOut className="size-4" aria-hidden /> Sign out
+            </button>
+          </>
         )}
       </Modal>
     </>

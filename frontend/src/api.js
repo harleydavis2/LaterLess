@@ -19,10 +19,14 @@ function withStore(mode, fn) {
 const cacheGet = (key) => withStore('readonly', (s) => s.get(key));
 const cachePut = (key, value) => withStore('readwrite', (s) => s.put(value, key));
 
+/** Forget the cached data, so the next person on this device doesn't see it. */
+export const clearCache = () => withStore('readwrite', (s) => s.clear()).catch(() => {});
+
 export class ApiError extends Error {
-  constructor(message, offline = false) {
+  constructor(message, { offline = false, status } = {}) {
     super(message);
     this.offline = offline;
+    this.status = status;
   }
 }
 
@@ -35,11 +39,11 @@ async function request(path, method = 'GET', body) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new ApiError("You're offline. This change wasn't saved — try again when you're connected.", true);
+    throw new ApiError("You're offline. This change wasn't saved — try again when you're connected.", { offline: true });
   }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(data?.error || `Server error (${res.status}). Is the backend running?`);
+  if (!res.ok) throw new ApiError(data?.error || `Server error (${res.status}). Is the backend running?`, { status: res.status });
   return data;
 }
 
@@ -70,6 +74,9 @@ export async function loadAll() {
 }
 
 export const api = {
+  signup: (account) => request('/auth/signup', 'POST', account),
+  login: (credentials) => request('/auth/login', 'POST', credentials),
+  logout: () => request('/auth/logout', 'POST'),
   saveUser: (name) => request('/user', 'PUT', { name }),
   createTask: (task) => request('/tasks', 'POST', task),
   updateTask: (id, changes) => request(`/tasks/${id}`, 'PATCH', changes),
