@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { api } from '../api.js';
 
 // Sign in and sign up share one screen; the tabs switch between the two forms.
@@ -7,6 +8,7 @@ export default function Auth({ onDone }) {
   const [values, setValues] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const signup = mode === 'signup';
   const set = (key) => (e) => setValues({ ...values, [key]: e.target.value });
 
@@ -74,18 +76,29 @@ export default function Auth({ onDone }) {
           <label htmlFor="password" className="label">
             Password
           </label>
-          <input
-            id="password"
-            type="password"
-            className="input"
-            required
-            minLength={signup ? 8 : undefined}
-            maxLength={128}
-            autoComplete={signup ? 'new-password' : 'current-password'}
-            aria-describedby={signup ? 'password-hint' : undefined}
-            value={values.password}
-            onChange={set('password')}
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              className="input pr-11"
+              required
+              minLength={signup ? 8 : undefined}
+              maxLength={128}
+              autoComplete={signup ? 'new-password' : 'current-password'}
+              aria-describedby={signup ? 'password-hint' : undefined}
+              value={values.password}
+              onChange={set('password')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-xl text-stone-500 hover:text-stone-800"
+            >
+              {showPassword ? <EyeOff className="size-5" aria-hidden /> : <Eye className="size-5" aria-hidden />}
+            </button>
+          </div>
           {signup && (
             <p id="password-hint" className="mt-1.5 text-xs text-stone-500">
               At least 8 characters.
