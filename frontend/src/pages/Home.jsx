@@ -3,6 +3,7 @@ import { CalendarCheck, CircleUserRound, LogOut, Plus } from 'lucide-react';
 import { useApp } from '../App.jsx';
 import Modal from '../components/Modal.jsx';
 import ProfileForm from '../components/ProfileForm.jsx';
+import InstallApp from '../components/InstallApp.jsx';
 import TaskCard from '../components/TaskCard.jsx';
 import { EmptyState } from '../components/States.jsx';
 import { WeeklyChart } from '../components/Charts.jsx';
@@ -137,6 +138,9 @@ export default function Home() {
                 setProfileOpen(false);
               }}
             />
+            <div className="mt-5 border-t border-stone-100 pt-4">
+              <InstallApp />
+            </div>
             <button type="button" className="btn btn-secondary mt-3 w-full" onClick={confirmSignOut}>
               <LogOut className="size-4" aria-hidden /> Sign out
             </button>
