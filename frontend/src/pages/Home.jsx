@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { CalendarCheck, CircleUserRound, LogOut, Plus } from 'lucide-react';
+import { CalendarCheck, CircleUserRound, KeyRound, LogOut, Plus } from 'lucide-react';
 import { useApp } from '../App.jsx';
 import Modal from '../components/Modal.jsx';
 import ProfileForm from '../components/ProfileForm.jsx';
 import InstallApp from '../components/InstallApp.jsx';
+import ChangePasswordForm from '../components/ChangePasswordForm.jsx';
 import TaskCard from '../components/TaskCard.jsx';
 import { EmptyState } from '../components/States.jsx';
 import { WeeklyChart } from '../components/Charts.jsx';
@@ -25,11 +26,16 @@ function Stat({ label, value, tone = 'text-stone-900' }) {
 }
 
 export default function Home() {
-  const { user, tasks, sessions, logs, reload, openTaskForm, signOut, askConfirm } = useApp();
+  const { user, tasks, sessions, logs, reload, openTaskForm, signOut, askConfirm, setToast } = useApp();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const closeProfile = () => {
+    setProfileOpen(false);
+    setChangingPassword(false);
+  };
 
   const confirmSignOut = () => {
-    setProfileOpen(false);
+    closeProfile();
     if (!localStorage.getItem(TIMER_KEY)) return signOut();
     askConfirm({
       title: 'Sign out?',
@@ -124,7 +130,7 @@ export default function Home() {
         <WeeklyChart data={weeklyCompletions(tasks)} height={130} />
       </section>
 
-      <Modal open={profileOpen} onClose={() => setProfileOpen(false)} title="Your profile">
+      <Modal open={profileOpen} onClose={closeProfile} title="Your profile">
         {profileOpen && (
           <>
             <p className="mb-4 text-sm text-stone-500">
@@ -139,6 +145,20 @@ export default function Home() {
               }}
             />
             <div className="mt-5 border-t border-stone-100 pt-4">
+              {changingPassword ? (
+                <ChangePasswordForm
+                  onDone={() => {
+                    closeProfile();
+                    setToast('Password updated.');
+                  }}
+                />
+              ) : (
+                <button type="button" className="btn btn-secondary w-full" onClick={() => setChangingPassword(true)}>
+                  <KeyRound className="size-4" aria-hidden /> Change password
+                </button>
+              )}
+            </div>
+            <div className="mt-3">
               <InstallApp />
             </div>
             <button type="button" className="btn btn-secondary mt-3 w-full" onClick={confirmSignOut}>

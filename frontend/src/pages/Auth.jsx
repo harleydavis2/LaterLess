@@ -70,7 +70,7 @@ export default function Auth({ onDone }) {
           <label htmlFor="email" className="label">
             Email
           </label>
-          <input id="email" type="email" className="input" required maxLength={254} autoComplete="email" value={values.email} onChange={set('email')} />
+          <input id="email" type="email" className="input" required maxLength={254} autoComplete="email" autoCapitalize="none" spellCheck={false} value={values.email} onChange={set('email')} />
         </div>
         <div>
           <label htmlFor="password" className="label">
@@ -85,6 +85,10 @@ export default function Auth({ onDone }) {
               minLength={signup ? 8 : undefined}
               maxLength={128}
               autoComplete={signup ? 'new-password' : 'current-password'}
+              // When shown as text, stop phone keyboards from capitalising or "correcting" the password.
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               aria-describedby={signup ? 'password-hint' : undefined}
               value={values.password}
               onChange={set('password')}

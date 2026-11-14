@@ -83,6 +83,7 @@ export const api = {
   signup: (account) => request('/auth/signup', 'POST', account),
   login: (credentials) => request('/auth/login', 'POST', credentials),
   logout: () => request('/auth/logout', 'POST'),
+  changePassword: (current_password, new_password) => request('/auth/password', 'POST', { current_password, new_password }),
   saveUser: (name) => request('/user', 'PUT', { name }),
   createTask: (task) => request('/tasks', 'POST', task),
   updateTask: (id, changes) => request(`/tasks/${id}`, 'PATCH', changes),

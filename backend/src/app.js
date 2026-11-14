@@ -16,6 +16,14 @@ export function createApp(db) {
   app.set('trust proxy', 1);
   app.use(express.json({ limit: '20kb' }));
 
+  // On Railway the database only survives redeploys when DB_PATH is inside an attached volume.
+  app.get('/api/health', (req, res) => {
+    const volume = process.env.RAILWAY_VOLUME_MOUNT_PATH;
+    res.json({
+      ok: true,
+      persistentStorage: process.env.RAILWAY_ENVIRONMENT ? !!volume && (process.env.DB_PATH ?? '').startsWith(volume) : null,
+    });
+  });
   app.use('/api/auth', authRoutes(db));
   app.use('/api/user', userRoutes(db));
   app.use('/api/tasks', requireAuth(db), taskRoutes(db));

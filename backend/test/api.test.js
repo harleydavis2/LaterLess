@@ -57,6 +57,20 @@ test('accounts: sign up, sign in, sign out, validation', async () => {
     assert.equal((await call('GET', '/user')).body.email, 'sam@x.io');
 
     assert.equal((await call('PUT', '/user', { name: 'Samantha' })).body.name, 'Samantha');
+
+    // Change password: needs the current one, signs out other devices, keeps this one signed in.
+    const laptop = client();
+    await laptop('POST', '/auth/login', { email: 'sam@x.io', password: 'correct horse' });
+    assert.equal((await call('POST', '/auth/password', { current_password: 'nope', new_password: 'new password 1' })).status, 400);
+    assert.equal((await call('POST', '/auth/password', { current_password: 'correct horse', new_password: 'short' })).status, 400);
+    assert.equal((await call('POST', '/auth/password', { current_password: 'correct horse', new_password: 'new password 1' })).status, 204);
+    assert.equal((await call('GET', '/user')).body.email, 'sam@x.io', 'still signed in here');
+    assert.equal((await laptop('GET', '/user')).body, null, 'other device signed out');
+    assert.equal((await laptop('POST', '/auth/login', { email: 'sam@x.io', password: 'correct horse' })).status, 401);
+    assert.equal((await laptop('POST', '/auth/login', { email: 'sam@x.io', password: 'new password 1' })).status, 200);
+    assert.equal((await client()('POST', '/auth/password', { current_password: 'x', new_password: 'whatever12' })).status, 401);
+
+    assert.deepEqual((await call('GET', '/health')).body, { ok: true, persistentStorage: null });
   } finally {
     server.close();
   }

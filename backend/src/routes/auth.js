@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { endSession, hashPassword, startSession, verifyPassword } from '../auth.js';
+import { endSession, hashPassword, requireAuth, startSession, verifyPassword } from '../auth.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const text = (v) => (typeof v === 'string' ? v : '');
@@ -56,6 +56,24 @@ export default function authRoutes(db) {
     failures.delete(req.ip);
     startSession(db, req, res, user.id);
     res.json(db.prepare(`SELECT ${PUBLIC_FIELDS} FROM Users WHERE id = ?`).get(user.id));
+  });
+
+  // Needs the current password too, so a borrowed or stolen session can't lock the owner out.
+  r.post('/password', requireAuth(db), async (req, res) => {
+    if (isBlocked(req.ip)) return res.status(429).json({ error: 'Too many failed attempts. Try again in 15 minutes.' });
+    const current = text(req.body?.current_password);
+    const next = text(req.body?.new_password);
+    const { password_hash } = db.prepare('SELECT password_hash FROM Users WHERE id = ?').get(req.user.id);
+    if (!current || !(await verifyPassword(current, password_hash))) {
+      recordFailure(req.ip);
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+    if (next.length < 8 || next.length > 128) return res.status(400).json({ error: 'New password must be 8–128 characters' });
+    db.prepare('UPDATE Users SET password_hash = ? WHERE id = ?').run(await hashPassword(next), req.user.id);
+    // Sign out every other device; keep this one signed in with a fresh session.
+    db.prepare('DELETE FROM AuthSessions WHERE user_id = ?').run(req.user.id);
+    startSession(db, req, res, req.user.id);
+    res.status(204).end();
   });
 
   r.post('/logout', (req, res) => {

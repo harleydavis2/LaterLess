@@ -22,7 +22,7 @@ export default function Modal({ open, onClose, title, children }) {
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
       aria-labelledby="modal-title"
-      className="mx-auto mt-auto mb-0 max-h-[90dvh] w-full max-w-none rounded-t-3xl bg-white p-0 text-stone-900 shadow-xl backdrop:bg-stone-900/40 sm:mb-auto sm:max-w-md sm:rounded-2xl"
+      className="mx-auto mt-auto mb-0 max-h-[90dvh] w-full overflow-y-auto max-w-none rounded-t-3xl bg-white p-0 text-stone-900 shadow-xl backdrop:bg-stone-900/40 sm:mb-auto sm:max-w-md sm:rounded-2xl"
     >
       {open && (
         <div className="p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
